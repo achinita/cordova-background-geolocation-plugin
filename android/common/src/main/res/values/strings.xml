@@ -1,14 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Defaults for plugin string resources to avoid missing-resource build failures
-         NOTE: For best results set `plugin_bgloc_content_authority` and
-         `plugin_bgloc_account_type` in the app's res/values/strings.xml to
-         a value that includes your applicationId (e.g. "com.myapp.account"). -->
+         NOTE: You may override these in the app's res/values/strings.xml to
+         include your applicationId (recommended), e.g. "com.myapp.account". -->
     <string name="plugin_bgloc_account_name">@string/app_name</string>
     <string name="plugin_bgloc_account_type">background.geolocation.account</string>
     <string name="plugin_bgloc_content_authority">background.geolocation.provider</string>
-</resources>
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="app_name">app_name</string>
 </resources>
