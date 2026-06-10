@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <sync-adapter
     xmlns:android="http://schemas.android.com/apk/res/android"
-    android:contentAuthority="com.outsystemsenterprise.grupovendapdev.SOLGo.provider"
+    android:contentAuthority="com.outsystemsenterprise.grupovendap.SOLGo.provider"
     android:accountType="@string/plugin_bgloc_account_type"
     android:userVisible="false"
     android:supportsUploading="true"
