@@ -150,7 +150,7 @@
             </service>
             <provider
                 android:name="com.marianhello.bgloc.data.provider.LocationContentProvider"
-                android:authorities="@string/plugin_bgloc_content_authority"
+                android:authorities="${applicationId}.bgloc.provider"
                 android:exported="false"
                 android:syncable="true"/>
             <service
