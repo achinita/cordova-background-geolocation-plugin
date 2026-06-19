@@ -94,12 +94,12 @@ var BackgroundGeolocation = {
     );
   },
 
-  start: function () {
-    return execWithPromise(null, null, 'start');
+  start: function (success, failure) {
+    return execWithPromise(success || null, failure || null, 'start');
   },
 
-  stop: function () {
-    return execWithPromise(null, null, 'stop');
+  stop: function (success, failure) {
+    return execWithPromise(success || null, failure || null, 'stop');
   },
 
   switchMode: function (mode, success, failure) {
