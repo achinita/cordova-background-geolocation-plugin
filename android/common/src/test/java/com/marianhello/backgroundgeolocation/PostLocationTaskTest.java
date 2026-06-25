@@ -7,6 +7,8 @@ import com.marianhello.bgloc.PostLocationTask.PostLocationTaskListener;
 import com.marianhello.bgloc.data.BackgroundLocation;
 import com.marianhello.bgloc.data.LocationDAO;
 
+import android.content.Context;
+import org.robolectric.RuntimeEnvironment;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -99,7 +101,7 @@ public class PostLocationTaskTest {
         LocationDAO mockDAO = mock(LocationDAO.class);
 
         PostLocationTaskListener mockListener = mock(PostLocationTaskListener.class);
-        PostLocationTask task = new PostLocationTask(mockDAO,mockListener, connectivityListener);
+        PostLocationTask task = new PostLocationTask(RuntimeEnvironment.application, mockDAO, mockListener, connectivityListener);
 
         Config config = Config.getDefault();
         config.setUrl(TEST_PROTOCOL + "://localhost:3000/locations");
@@ -119,7 +121,7 @@ public class PostLocationTaskTest {
         LocationDAO mockDAO = mock(LocationDAO.class);
 
         PostLocationTaskListener mockListener = mock(PostLocationTaskListener.class);
-        PostLocationTask task = new PostLocationTask(mockDAO,mockListener, connectivityListener);
+        PostLocationTask task = new PostLocationTask(RuntimeEnvironment.application, mockDAO, mockListener, connectivityListener);
 
         Config config = Config.getDefault();
         config.setUrl(TEST_PROTOCOL + "://localhost:3000/locations");
@@ -139,7 +141,7 @@ public class PostLocationTaskTest {
         LocationDAO mockDAO = mock(LocationDAO.class);
 
         PostLocationTaskListener mockListener = mock(PostLocationTaskListener.class);
-        PostLocationTask task = new PostLocationTask(mockDAO,mockListener, connectivityListener);
+        PostLocationTask task = new PostLocationTask(RuntimeEnvironment.application, mockDAO, mockListener, connectivityListener);
 
         Config config = Config.getDefault();
         config.setUrl(SLOW_PROTOCOL + "://localhost:3000/locations");
@@ -161,7 +163,7 @@ public class PostLocationTaskTest {
         LocationDAO mockDAO = mock(LocationDAO.class);
 
         PostLocationTaskListener mockListener = mock(PostLocationTaskListener.class);
-        PostLocationTask task = new PostLocationTask(mockDAO,mockListener, connectivityListener);
+        PostLocationTask task = new PostLocationTask(RuntimeEnvironment.application, mockDAO, mockListener, connectivityListener);
 
         Config config = Config.getDefault();
         config.setUrl(SLOW_PROTOCOL + "://localhost:3000/locations");

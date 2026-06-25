@@ -198,7 +198,7 @@ public class LocationServiceImpl extends Service implements ProviderDelegate, Lo
 
         mLocationDAO = DAOFactory.createLocationDAO(this);
 
-        mPostLocationTask = new PostLocationTask(mLocationDAO,
+        mPostLocationTask = new PostLocationTask(this, mLocationDAO,
                 new PostLocationTask.PostLocationTaskListener() {
                     @Override
                     public void onRequestedAbortUpdates() {
@@ -633,7 +633,11 @@ public class LocationServiceImpl extends Service implements ProviderDelegate, Lo
 
     @Override
     public Intent registerReceiver(BroadcastReceiver receiver, IntentFilter filter) {
-        return super.registerReceiver(receiver, filter, null, mServiceHandler, RECEIVER_NOT_EXPORTED);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            return super.registerReceiver(receiver, filter, null, mServiceHandler, RECEIVER_NOT_EXPORTED);
+        } else {
+            return super.registerReceiver(receiver, filter, null, mServiceHandler);
+        }
     }
 
     @Override

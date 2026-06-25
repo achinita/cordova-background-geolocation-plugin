@@ -180,7 +180,13 @@ public class BackgroundGeolocationFacade {
     private synchronized void registerLocationModeChangeReceiver() {
         if (mLocationModeChangeReceiverRegistered) return;
 
-        getContext().registerReceiver(locationModeChangeReceiver, new IntentFilter(android.location.LocationManager.MODE_CHANGED_ACTION));
+        Context context = getContext();
+        IntentFilter filter = new IntentFilter(android.location.LocationManager.MODE_CHANGED_ACTION);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            context.registerReceiver(locationModeChangeReceiver, filter, Context.RECEIVER_EXPORTED);
+        } else {
+            context.registerReceiver(locationModeChangeReceiver, filter);
+        }
         mLocationModeChangeReceiverRegistered = true;
     }
 
@@ -212,26 +218,52 @@ public class BackgroundGeolocationFacade {
         mServiceBroadcastReceiverRegistered = false;
     }
 
+    private void proceedToStartService(PermissionManager permissionManager) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            permissionManager.checkPermissions(Arrays.asList(Manifest.permission.POST_NOTIFICATIONS), new PermissionManager.PermissionRequestListener() {
+                @Override
+                public void onPermissionGranted() {
+                    logger.info("User granted POST_NOTIFICATIONS permission");
+                }
+
+                @Override
+                public void onPermissionDenied(DeniedPermissions deniedPermissions) {
+                    logger.warn("User denied POST_NOTIFICATIONS permission");
+                }
+            });
+        }
+
+        // watch location mode changes
+        registerLocationModeChangeReceiver();
+        registerServiceBroadcast();
+        startBackgroundService();
+    }
+
     public void start() {
         logger.debug("Starting service");
 
-        PermissionManager permissionManager = PermissionManager.getInstance(getContext());
+        final PermissionManager permissionManager = PermissionManager.getInstance(getContext());
         permissionManager.checkPermissions(Arrays.asList(PERMISSIONS), new PermissionManager.PermissionRequestListener() {
             @Override
             public void onPermissionGranted() {
-                logger.info("User granted requested permissions");
-                permissionManager.checkPermissions(Arrays.asList(Manifest.permission.POST_NOTIFICATIONS), new PermissionManager.PermissionRequestListener() {
-                    @Override
-                    public void onPermissionGranted() {} // noop
-        
-                    @Override
-                    public void onPermissionDenied(DeniedPermissions deniedPermissions) {} // noop
-                });
+                logger.info("User granted requested foreground location permissions");
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    permissionManager.checkPermissions(Arrays.asList(Manifest.permission.ACCESS_BACKGROUND_LOCATION), new PermissionManager.PermissionRequestListener() {
+                        @Override
+                        public void onPermissionGranted() {
+                            logger.info("User granted background location permission");
+                            proceedToStartService(permissionManager);
+                        }
 
-                // watch location mode changes
-                registerLocationModeChangeReceiver();
-                registerServiceBroadcast();
-                startBackgroundService();
+                        @Override
+                        public void onPermissionDenied(DeniedPermissions deniedPermissions) {
+                            logger.warn("User denied background location permission");
+                            proceedToStartService(permissionManager);
+                        }
+                    });
+                } else {
+                    proceedToStartService(permissionManager);
+                }
             }
 
             @Override

@@ -1,5 +1,7 @@
 package com.marianhello.bgloc;
 
+import android.content.Context;
+import android.os.PowerManager;
 import com.marianhello.bgloc.data.BackgroundLocation;
 import com.marianhello.bgloc.data.LocationDAO;
 import com.marianhello.logging.LoggerManager;
@@ -31,6 +33,7 @@ public class PostLocationTask {
     private final LocationDAO mLocationDAO;
     private final PostLocationTaskListener mTaskListener;
     private final ConnectivityListener mConnectivityListener;
+    private final PowerManager.WakeLock mWakeLock;
 
     private final ExecutorService mExecutor;
 
@@ -46,7 +49,7 @@ public class PostLocationTask {
         void onHttpAuthorizationUpdates();
     }
 
-    public PostLocationTask(LocationDAO dao, PostLocationTaskListener taskListener,
+    public PostLocationTask(Context context, LocationDAO dao, PostLocationTaskListener taskListener,
                             ConnectivityListener connectivityListener) {
         logger = LoggerManager.getLogger(PostLocationTask.class);
         logger.info("Creating PostLocationTask");
@@ -54,6 +57,10 @@ public class PostLocationTask {
         mLocationDAO = dao;
         mTaskListener = taskListener;
         mConnectivityListener = connectivityListener;
+
+        PowerManager pm = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
+        mWakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "bgloc:PostLocationTask");
+        mWakeLock.setReferenceCounted(false);
 
         mExecutor = Executors.newSingleThreadExecutor();
     }
@@ -81,6 +88,10 @@ public class PostLocationTask {
             return;
         }
 
+        if (mWakeLock != null) {
+            mWakeLock.acquire(30000); // 30 seconds timeout
+        }
+
         long locationId = mLocationDAO.persistLocation(location);
         location.setLocationId(locationId);
 
@@ -93,6 +104,9 @@ public class PostLocationTask {
             });
         } catch (RejectedExecutionException ex) {
             mLocationDAO.updateLocationForSync(locationId);
+            if (mWakeLock != null && mWakeLock.isHeld()) {
+                mWakeLock.release();
+            }
         }
     }
 
@@ -113,25 +127,31 @@ public class PostLocationTask {
     }
 
     private void post(final BackgroundLocation location) {
-        long locationId = location.getLocationId();
+        try {
+            long locationId = location.getLocationId();
 
-        if (mHasConnectivity && mConfig.hasValidUrl()) {
-            if (postLocation(location)) {
-                mLocationDAO.deleteLocationById(locationId);
+            if (mHasConnectivity && mConfig.hasValidUrl()) {
+                if (postLocation(location)) {
+                    mLocationDAO.deleteLocationById(locationId);
 
-                return; // if posted successfully do nothing more
+                    return; // if posted successfully do nothing more
+                } else {
+                    mLocationDAO.updateLocationForSync(locationId);
+                }
             } else {
                 mLocationDAO.updateLocationForSync(locationId);
             }
-        } else {
-            mLocationDAO.updateLocationForSync(locationId);
-        }
 
-        if (mConfig.hasValidSyncUrl()) {
-            long syncLocationsCount = mLocationDAO.getLocationsForSyncCount(System.currentTimeMillis());
-            if (syncLocationsCount >= mConfig.getSyncThreshold()) {
-                logger.debug("Attempt to sync locations: {} threshold: {}", syncLocationsCount, mConfig.getSyncThreshold());
-                mTaskListener.onSyncRequested();
+            if (mConfig.hasValidSyncUrl()) {
+                long syncLocationsCount = mLocationDAO.getLocationsForSyncCount(System.currentTimeMillis());
+                if (syncLocationsCount >= mConfig.getSyncThreshold()) {
+                    logger.debug("Attempt to sync locations: {} threshold: {}", syncLocationsCount, mConfig.getSyncThreshold());
+                    mTaskListener.onSyncRequested();
+                }
+            }
+        } finally {
+            if (mWakeLock != null && mWakeLock.isHeld()) {
+                mWakeLock.release();
             }
         }
     }
