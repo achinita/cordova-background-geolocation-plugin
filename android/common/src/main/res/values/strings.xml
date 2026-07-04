@@ -7,5 +7,4 @@
     <string name="plugin_bgloc_account_name">@string/app_name</string>
     <string name="plugin_bgloc_account_type">background.geolocation.account</string>
     <string name="plugin_bgloc_content_authority">background.geolocation.provider</string>
-    <string name="app_name">app_name</string>
 </resources>
