@@ -12,11 +12,7 @@ public class LocationServiceInfoImpl implements LocationServiceInfo {
 
     @Override
     public boolean isStarted() {
-        ActivityManager.RunningServiceInfo info = getRunningServiceInfo();
-        if (info != null) {
-            return info.started;
-        }
-        return false;
+        return LocationServiceImpl.isRunning();
     }
 
     @Override

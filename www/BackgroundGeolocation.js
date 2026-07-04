@@ -16,7 +16,7 @@ var TAG = 'CDVBackgroundGeolocation';
 
 var assert = function (condition, msgArray) {
   if (!condition) {
-      throw new Error(msgArray.join('') || 'Assertion failed');
+    throw new Error(msgArray.join('') || 'Assertion failed');
   }
 }
 
@@ -29,7 +29,7 @@ var errorHandler = function (error) {
 };
 
 var unsubscribeAll = function (channels) {
-  channels.forEach(function(channel) {
+  channels.forEach(function (channel) {
     var topic = radio(channel);
     var callbacks = [].concat.apply([], topic.channels[channel]); // flatten array
     topic.unsubscribe.apply(topic, callbacks);
@@ -39,10 +39,10 @@ var unsubscribeAll = function (channels) {
 var execWithPromise = function (suceess, failure, method, data) {
   if (!suceess && !failure) {
     return new Promise(function (resolve, reject) {
-      exec(resolve, reject, 'BackgroundGeolocation', method, data);    
+      exec(resolve, reject, 'BackgroundGeolocation', method, data);
     });
   }
-  exec(suceess || function() {}, failure || function() {}, 'BackgroundGeolocation', method, data || []);
+  exec(suceess || function () { }, failure || function () { }, 'BackgroundGeolocation', method, data || []);
 }
 
 var BackgroundGeolocation = {
@@ -148,7 +148,7 @@ var BackgroundGeolocation = {
   },
 
   getValidLocationsAndDelete: function (success, failure) {
-    return execWithPromise(success, 
+    return execWithPromise(success,
       failure,
       'getValidLocationsAndDelete');
   },
@@ -165,14 +165,14 @@ var BackgroundGeolocation = {
       'deleteAllLocations');
   },
 
-  getCurrentLocation: function(success, failure, options) {
+  getCurrentLocation: function (success, failure, options) {
     options = options || {};
     return execWithPromise(success,
       failure,
       'getCurrentLocation', [options.timeout, options.maximumAge, options.enableHighAccuracy]);
   },
 
-  getLogEntries: function(limit, offset = 0, minLevel = "DEBUG", success, failure) {
+  getLogEntries: function (limit, offset = 0, minLevel = "DEBUG", success, failure) {
     return execWithPromise(success,
       failure,
       'getLogEntries', [limit, offset, minLevel]);

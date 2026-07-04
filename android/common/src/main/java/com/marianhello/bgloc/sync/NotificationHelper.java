@@ -57,8 +57,12 @@ public class NotificationHelper {
             builder.setContentTitle(title);
             builder.setContentText(text);
             builder.setOngoing(true);
+            int smallIconId = 0;
             if (smallIcon != null && !smallIcon.isEmpty()) {
-                builder.setSmallIcon(mResolver.getDrawable(smallIcon));
+                smallIconId = mResolver.getDrawable(smallIcon);
+            }
+            if (smallIconId != 0) {
+                builder.setSmallIcon(smallIconId);
             } else {
                 builder.setSmallIcon(android.R.drawable.ic_menu_mylocation);
             }

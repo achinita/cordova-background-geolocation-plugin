@@ -180,13 +180,7 @@ public class BackgroundGeolocationFacade {
     private synchronized void registerLocationModeChangeReceiver() {
         if (mLocationModeChangeReceiverRegistered) return;
 
-        Context context = getContext();
-        IntentFilter filter = new IntentFilter(android.location.LocationManager.MODE_CHANGED_ACTION);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            context.registerReceiver(locationModeChangeReceiver, filter, Context.RECEIVER_EXPORTED);
-        } else {
-            context.registerReceiver(locationModeChangeReceiver, filter);
-        }
+        getContext().registerReceiver(locationModeChangeReceiver, new IntentFilter(android.location.LocationManager.MODE_CHANGED_ACTION));
         mLocationModeChangeReceiverRegistered = true;
     }
 
@@ -218,52 +212,15 @@ public class BackgroundGeolocationFacade {
         mServiceBroadcastReceiverRegistered = false;
     }
 
-    private void proceedToStartService(PermissionManager permissionManager) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            permissionManager.checkPermissions(Arrays.asList(Manifest.permission.POST_NOTIFICATIONS), new PermissionManager.PermissionRequestListener() {
-                @Override
-                public void onPermissionGranted() {
-                    logger.info("User granted POST_NOTIFICATIONS permission");
-                }
-
-                @Override
-                public void onPermissionDenied(DeniedPermissions deniedPermissions) {
-                    logger.warn("User denied POST_NOTIFICATIONS permission");
-                }
-            });
-        }
-
-        // watch location mode changes
-        registerLocationModeChangeReceiver();
-        registerServiceBroadcast();
-        startBackgroundService();
-    }
-
     public void start() {
         logger.debug("Starting service");
 
-        final PermissionManager permissionManager = PermissionManager.getInstance(getContext());
+        PermissionManager permissionManager = PermissionManager.getInstance(getContext());
         permissionManager.checkPermissions(Arrays.asList(PERMISSIONS), new PermissionManager.PermissionRequestListener() {
             @Override
             public void onPermissionGranted() {
-                logger.info("User granted requested foreground location permissions");
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    permissionManager.checkPermissions(Arrays.asList(Manifest.permission.ACCESS_BACKGROUND_LOCATION), new PermissionManager.PermissionRequestListener() {
-                        @Override
-                        public void onPermissionGranted() {
-                            logger.info("User granted background location permission");
-                            proceedToStartService(permissionManager);
-                        }
-
-                        @Override
-                        public void onPermissionDenied(DeniedPermissions deniedPermissions) {
-                            logger.warn("User denied background location permission");
-                            proceedToStartService(permissionManager);
-                        }
-                    });
-                } else {
-                    proceedToStartService(permissionManager);
-                }
+                logger.info("User granted requested permissions");
+                requestBackgroundPermissionAndContinue();
             }
 
             @Override
@@ -274,6 +231,65 @@ public class BackgroundGeolocationFacade {
                 }
             }
         });
+    }
+
+    private void requestBackgroundPermissionAndContinue() {
+        final String bgLocationPermission = "android.permission.ACCESS_BACKGROUND_LOCATION";
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && isPermissionDeclared(bgLocationPermission)) {
+            if (ContextCompat.checkSelfPermission(getContext(), bgLocationPermission) == PackageManager.PERMISSION_GRANTED) {
+                requestPostNotificationsAndStart();
+            } else {
+                PermissionManager permissionManager = PermissionManager.getInstance(getContext());
+                permissionManager.checkPermissions(Arrays.asList(bgLocationPermission), new PermissionManager.PermissionRequestListener() {
+                    @Override
+                    public void onPermissionGranted() {
+                        logger.info("User granted background location permission");
+                        requestPostNotificationsAndStart();
+                    }
+
+                    @Override
+                    public void onPermissionDenied(DeniedPermissions deniedPermissions) {
+                        logger.info("User denied background location permission");
+                        requestPostNotificationsAndStart();
+                    }
+                });
+            }
+        } else {
+            requestPostNotificationsAndStart();
+        }
+    }
+
+    private void requestPostNotificationsAndStart() {
+        final String postNotificationsPermission = "android.permission.POST_NOTIFICATIONS";
+        if (Build.VERSION.SDK_INT >= 33 && isPermissionDeclared(postNotificationsPermission)) {
+            if (ContextCompat.checkSelfPermission(getContext(), postNotificationsPermission) == PackageManager.PERMISSION_GRANTED) {
+                finishStartFlow();
+            } else {
+                PermissionManager permissionManager = PermissionManager.getInstance(getContext());
+                permissionManager.checkPermissions(Arrays.asList(postNotificationsPermission), new PermissionManager.PermissionRequestListener() {
+                    @Override
+                    public void onPermissionGranted() {
+                        logger.info("User granted post notifications permission");
+                        finishStartFlow();
+                    }
+
+                    @Override
+                    public void onPermissionDenied(DeniedPermissions deniedPermissions) {
+                        logger.info("User denied post notifications permission");
+                        finishStartFlow();
+                    }
+                });
+            }
+        } else {
+            finishStartFlow();
+        }
+    }
+
+    private void finishStartFlow() {
+        // watch location mode changes
+        registerLocationModeChangeReceiver();
+        registerServiceBroadcast();
+        startBackgroundService();
     }
 
     public void stop() {
@@ -455,7 +471,16 @@ public class BackgroundGeolocationFacade {
     }
 
     public boolean hasPermissions() {
-        return hasPermissions(getContext(), PERMISSIONS);
+        if (!hasPermissions(getContext(), PERMISSIONS)) {
+            return false;
+        }
+        String bgLocationPermission = "android.permission.ACCESS_BACKGROUND_LOCATION";
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && isPermissionDeclared(bgLocationPermission)) {
+            if (ContextCompat.checkSelfPermission(getContext(), bgLocationPermission) != PackageManager.PERMISSION_GRANTED) {
+                return false;
+            }
+        }
+        return true;
     }
 
     public boolean locationServicesEnabled() throws PluginException {
@@ -528,6 +553,23 @@ public class BackgroundGeolocationFacade {
         intent.addFlags(Intent.FLAG_ACTIVITY_NO_HISTORY);
         intent.addFlags(Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS);
         context.startActivity(intent);
+    }
+
+    private boolean isPermissionDeclared(String permission) {
+        try {
+            android.content.pm.PackageInfo info = getContext().getPackageManager().getPackageInfo(
+                    getContext().getPackageName(), PackageManager.GET_PERMISSIONS);
+            if (info.requestedPermissions != null) {
+                for (String p : info.requestedPermissions) {
+                    if (p.equals(permission)) {
+                        return true;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            logger.error("Error checking manifest permissions", e);
+        }
+        return false;
     }
 
     public static boolean hasPermissions(Context context, String[] permissions) {
